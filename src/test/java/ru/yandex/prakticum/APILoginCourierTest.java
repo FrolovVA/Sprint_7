@@ -1,7 +1,8 @@
 package ru.yandex.prakticum;
 
-import io.restassured.RestAssured;
-import io.restassured.config.LogConfig;
+import io.qameta.allure.Step;
+import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -21,76 +22,65 @@ public class APILoginCourierTest {
         courierSteps.createCourier(login, password);
     }
 
+    @Step("Запрос на вход в систему")
+    public ValidatableResponse loggingIn(String login, String password){
+        ValidatableResponse validatableResponse = courierSteps.loginCourier(login, password);
+        return validatableResponse;
+    }
+
+    @Step("Проверка статус кода")
+    public void checkStatusCode(ValidatableResponse validatableResponse, int statusCode){
+        validatableResponse.statusCode(statusCode);
+    }
+
+    @Step("Проверка сообщения об ошибке в теле ответа при невалидном запросе")
+    public void checkMessage(ValidatableResponse validatableResponse, String expectedMessage){
+        validatableResponse.body("message", is(expectedMessage));
+    }
+
+    @Step("Проверка наличия id в ответе при валидном запросе")
+    public void checkIdIsNotNull(ValidatableResponse validatableResponse){
+        validatableResponse.body("id", is(notNullValue()));
+    }
+
     @Test
+    @DisplayName("Проверка статуса 200 и наличия id в ответе на валидный запрос")
     public void successLoginReturnStatus200CourierTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(login, password).statusCode(200);
+        ValidatableResponse validatableResponse = loggingIn(login, password);
+        checkStatusCode(validatableResponse, 200);
+        checkIdIsNotNull(validatableResponse);
     }
 
     @Test
-    public void successLoginReturnIdIsNotNullCourierTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(login, password).body("id", is(notNullValue()));
-    }
-
-    @Test
+    @DisplayName("Проверка статуса 400 и сообщения об ошибке в ответе на невалидный запрос без логина")
     public void shouldReturnStatus400LoginWithoutLoginNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(null, password).statusCode(400);
+        ValidatableResponse validatableResponse = loggingIn(null, password);
+        checkStatusCode(validatableResponse, 400);
+        checkMessage(validatableResponse, "Недостаточно данных для входа");
     }
 
     @Test
-    public void shouldReturnMessageLoginWithoutLoginNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(null, password).body("message", is("Недостаточно данных для входа"));
-    }
-
-    @Test
+    @DisplayName("Проверка статуса 400 и сообщения об ошибке в ответе на невалидный запрос без пароля")
     public void shouldReturnStatus400LoginWithoutPasswordNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(login, null).statusCode(400);
+        ValidatableResponse validatableResponse = loggingIn(login, null);
+        checkStatusCode(validatableResponse, 400);
+        checkMessage(validatableResponse, "Недостаточно данных для входа");
     }
 
     @Test
-    public void shouldReturnMessageLoginWithoutPasswordNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(login, null).body("message", is("Недостаточно данных для входа"));
-    }
-
-    @Test
+    @DisplayName("Проверка статуса 404 и сообщения об ошибке в ответе на невалидный запрос с несуществующим логином")
     public void shouldReturnStatus404LoginWithIncorrectLoginNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(password, password).statusCode(404);
+        ValidatableResponse validatableResponse = loggingIn(password, password);
+        checkStatusCode(validatableResponse, 404);
+        checkMessage(validatableResponse, "Учетная запись не найдена");
     }
 
     @Test
-    public void shouldReturnMessageLoginWithIncorrectLoginNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(password, password)
-                .body("message", is("Учетная запись не найдена"));
-    }
-
-    @Test
+    @DisplayName("Проверка статуса 404 и сообщения об ошибке в ответе на невалидный запрос с неверным паролем")
     public void shouldReturnStatus404LoginWithIncorrectPasswordNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(login, login).statusCode(404);
-    }
-
-    @Test
-    public void shouldReturnMessageLoginWithIncorrectPasswordNegativeTest(){
-        RestAssured.config = RestAssured.config()
-                .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails());
-        courierSteps.loginCourier(login, login)
-                .body("message", is("Учетная запись не найдена"));
+        ValidatableResponse validatableResponse = loggingIn(login, login);
+        checkStatusCode(validatableResponse, 404);
+        checkMessage(validatableResponse, "Учетная запись не найдена");
     }
 
     @After
